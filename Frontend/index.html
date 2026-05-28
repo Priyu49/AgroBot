@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌾 Farmer Chatbot</title>
+  
+  <style>
+    /* CSS code from style.css is now inside the <style> tag */
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #a8e063, #56ab2f);
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .chat-container {
+      width: 400px;
+      height: 600px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h2 {
+      text-align: center;
+      background: #56ab2f;
+      color: white;
+      padding: 15px;
+      margin: 0;
+      font-size: 1.2em;
+    }
+
+    #chat-box {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+
+    .user {
+      background-color: #e1ffc7;
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .bot {
+      background: #f1f1f1;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .bot.loading {
+      color: #777;
+      font-style: italic;
+    }
+    
+    .bot-image {
+        padding: 0;
+        max-width: 100%;
+        background: none;
+    }
+
+    img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 8px;
+    }
+
+    .input-section {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+
+    #user-input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      outline: none;
+      font-size: 1em;
+    }
+
+    #send-btn {
+      background: #56ab2f;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    
+    #send-btn:hover {
+        background: #4a9426;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chat-container">
+    <h2>🌾 Farmer Assistant</h2>
+    <div id="chat-box">
+      </div>
+    <div class="input-section">
+      <input id="user-input" type="text" placeholder="Ask about crops, soil...">
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // JavaScript code from script.js is now inside the <script> tag
+    const API_URL = "http://localhost:5000/api/chat";
+    const chatBox = document.getElementById("chat-box");
+    const sendBtn = document.getElementById("send-btn");
+    const userInput = document.getElementById("user-input");
+
+    // Event Listeners
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keyup", function(event) {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      const messageText = userInput.value.trim();
+      if (!messageText) return;
+
+      appendMessage("user", messageText);
+      userInput.value = "";
+      showLoadingIndicator();
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Bug Fix: Send 'question' to match the backend
+          body: JSON.stringify({ question: messageText }),
+        });
+        
+        // Remove the loading indicator
+        const loadingMessage = document.querySelector(".loading");
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // The key from the server is 'answer', not 'reply'
+        appendMessage("bot", data.answer);
+        
+        // The key from the server is 'imageUrl', not 'image'
+        if (data.imageUrl) {
+          appendImage(data.imageUrl);
+        }
+
+      } catch (error) {
+        // Remove loading indicator on error as well
+        const loadingMessage = document.querySelector(".loading");
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
+        appendMessage("bot", `⚠️ Error: ${error.message}`);
+      }
+    }
+    
+    function showLoadingIndicator() {
+        const div = document.createElement("div");
+        div.className = "message bot loading";
+        div.textContent = "🤔 Thinking...";
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendMessage(sender, text) {
+      const div = document.createElement("div");
+      div.className = `message ${sender}`;
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendImage(url) {
+      const div = document.createElement("div");
+      div.className = "message bot-image"; // Use a specific class for image containers
+      const img = document.createElement("img");
+      img.src = url;
+      div.appendChild(img)
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
